@@ -36,6 +36,15 @@ class OverstatsPlugin(Star):
             yield event.plain_result(result)
             return
 
+        if action == "解绑":
+            if len(parts) != 1:
+                yield event.plain_result("用法：/ow 解绑")
+                return
+
+            result = await self._unbind_player(event.get_sender_id())
+            yield event.plain_result(result)
+            return
+
         if action.lower() == "help":
             yield event.plain_result(self._help_text())
             return
@@ -80,12 +89,17 @@ class OverstatsPlugin(Star):
 
         if action == "对局":
             if len(parts) != 2 or not parts[1].isdigit():
-                yield event.plain_result("用法：/ow 对局 对局索引，例如 /ow 对局 0")
+                yield event.plain_result("用法：/ow 对局 对局序号，例如 /ow 对局 1")
+                return
+
+            match_index = int(parts[1]) - 1
+            if match_index < 0:
+                yield event.plain_result("对局序号需要从 1 开始，例如 /ow 对局 1")
                 return
 
             payload = {
                 "bnet_id": bnet_id,
-                "index": int(parts[1]),
+                "index": match_index,
                 "limit": 20,
                 "include_fight": True,
                 "include_previous_season": True,
@@ -141,6 +155,19 @@ class OverstatsPlugin(Star):
         players[bnet_id] = user_id
         await self.put_kv_data(BINDINGS_KEY, bindings)
         return f"已绑定守望先锋玩家 ID：{bnet_id}"
+
+    async def _unbind_player(self, user_id: str) -> str:
+        bindings = await self._get_bindings()
+        users = bindings.setdefault("users", {})
+        players = bindings.setdefault("players", {})
+        bnet_id = users.pop(user_id, None)
+        if not bnet_id:
+            return "你当前没有绑定守望先锋玩家 ID。"
+
+        if players.get(bnet_id) == user_id:
+            players.pop(bnet_id, None)
+        await self.put_kv_data(BINDINGS_KEY, bindings)
+        return f"已解除绑定：{bnet_id}"
 
     async def _get_user_bnet_id(self, user_id: str) -> str | None:
         bindings = await self._get_bindings()
@@ -239,10 +266,11 @@ class OverstatsPlugin(Star):
             "支持的命令：\n"
             "/ow help （查看帮助）\n"
             "/ow 绑定 玩家id (绑定玩家id)\n"
+            "/ow 解绑 (解除当前绑定)\n"
             "/ow (查看玩家资料)\n"
             "/ow 英雄云图 （查看英雄云图） 或 /ow 云图\n"
             "/ow 近期对局 （查看最近对局）\n"
-            "/ow 对局 对局索引\n"
+            "/ow 对局 对局序号 （从 1 开始，例如 /ow 对局 1）\n"
             "/ow 今日总结\n"
             "/ow 昨日总结\n"
             "/ow 本周总结（速度较慢）"
