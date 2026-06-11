@@ -55,6 +55,7 @@ class OverstatsPlugin(Star):
             return
 
         if not action:
+            yield event.plain_result(self._querying_text(bnet_id, "玩家资料"))
             async for result in self._send_image_or_json(
                 event,
                 "/api/v2/dashen-profile/image",
@@ -66,6 +67,7 @@ class OverstatsPlugin(Star):
             return
 
         if action in {"英雄云图", "云图"}:
+            yield event.plain_result(self._querying_text(bnet_id, "英雄云图"))
             async for result in self._send_image_or_json(
                 event,
                 "/api/v2/dashen-hero-treemap/image",
@@ -77,6 +79,7 @@ class OverstatsPlugin(Star):
             return
 
         if action == "近期对局":
+            yield event.plain_result(self._querying_text(bnet_id, "近期对局"))
             async for result in self._send_image_or_json(
                 event,
                 "/api/v2/dashen-match/image",
@@ -97,6 +100,7 @@ class OverstatsPlugin(Star):
                 yield event.plain_result("对局序号需要从 1 开始，例如 /ow 对局 1")
                 return
 
+            yield event.plain_result(self._querying_text(bnet_id, f"第 {parts[1]} 场对局详情"))
             payload = {
                 "bnet_id": bnet_id,
                 "index": match_index,
@@ -123,6 +127,7 @@ class OverstatsPlugin(Star):
         }
         if action in summary_scopes:
             scope, timeout = summary_scopes[action]
+            yield event.plain_result(self._querying_text(bnet_id, action))
             async for result in self._send_image_or_json(
                 event,
                 f"/api/v2/dashen-summary/{scope}/image",
@@ -260,6 +265,9 @@ class OverstatsPlugin(Star):
     def _extract_args(self, event: AstrMessageEvent) -> str:
         message = re.sub(r"\s+", " ", event.get_message_str().strip())
         return message[2:].strip() if message == "ow" or message.startswith("ow ") else ""
+
+    def _querying_text(self, bnet_id: str, content: str) -> str:
+        return f"正在查询 {bnet_id} 的{content}，请稍候..."
 
     def _help_text(self) -> str:
         return (
